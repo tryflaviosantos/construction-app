@@ -1,0 +1,725 @@
+1. Contexto e Objetivo do Sistema
+
+Empresas de construção civil enfrentam problemas como:
+
+Dificuldade em comprovar horários reais de chegada e saída dos funcionários nas obras.
+
+Conflitos entre cliente × funcionário × empresa sobre horas trabalhadas.
+
+Fraude no ponto: funcionário A fazendo check-in/out por B (uso indevido do sistema).
+
+Perda/roubo de ferramentas.
+
+Complexidade para gerar folha de pagamento (horas, férias, ausências).
+
+Problemas em faturar corretamente o cliente com base nas horas efetivamente trabalhadas.
+
+Objetivo do sistema:
+
+Criar uma solução (web + mobile) que:
+
+Registre ponto na obra com provas confiáveis (localização, fotos, controle antifraude).
+
+Reduza conflitos com clientes, com portal de transparência e validação de horas.
+
+Controle ferramentas por funcionário/obra.
+
+Gerencie férias e ausências com impacto correto na folha e na faturação.
+
+Tenha mecanismos fortes de antifraude para impedir que um funcione “bata ponto” por outro.
+
+Ofereça autenticação com login tradicional + Google + Facebook.
+
+2. Perfis de Usuário
+
+Administrador da Empresa
+
+Configura empresa, regras de jornada, férias, antifraude, usuários, obras.
+
+Gestor / Encarregado
+
+Gerencia equipe, aprova ponto, férias, controle de ferramentas, valida contestações de clientes.
+
+Funcionário de Obra
+
+Registra check-in/out, pausas, solicita férias/ausências, faz check-in/out de ferramentas.
+
+Cliente
+
+Consulta relatórios de horas, confirma ou contesta registros.
+
+Usuário com Login Social (Google/Facebook)
+
+Pode ser funcionário ou gestor, associado a uma conta interna.
+
+3. Casos de Uso Principais (Resumo)
+
+Registrar ponto (entrada/saída/pausas) com validação de localização, evidências e antifraude.
+
+Cliente visualizar e validar horas trabalhadas.
+
+Controlar ferramentas (empréstimo, devolução, perdas/roubos).
+
+Gerir férias/ausências (pedido, aprovação, impacto em folha).
+
+Calcular horas e eventos para folha de pagamento.
+
+Calcular horas faturáveis e gerar relatórios para faturação.
+
+Impedir fraude de ponto entre funcionários (buddy punching) com mecanismos técnicos e operacionais.
+
+4. Requisitos Funcionais
+4.1. Gestão de Usuários, Perfis e Autenticação
+
+RF01 – Cadastro de usuários internos
+
+Criar usuários com: nome, email, telefone, função (admin, gestor, funcionário, cliente).
+
+RF02 – Login tradicional
+
+Autenticação via email + senha.
+
+RF03 – Login social (Google/Facebook)
+
+Autenticação via OAuth2/OpenID Connect com:
+
+Google
+
+Facebook
+
+Possibilidade de vincular conta social a um usuário interno já existente.
+
+RF04 – Perfis e permissões (RBAC)
+
+Papéis: admin, gestor, funcionário, cliente.
+
+Cada papel tem um conjunto definido de permissões:
+
+Ex.: funcionário não pode ver folha de outros; cliente não vê dados internos de RH.
+
+RF05 – Recuperação de senha
+
+Envio de e-mail com link de redefinição de senha.
+
+4.2. Cadastro de Clientes, Obras e Contratos
+
+RF06 – Cadastro de clientes
+
+Dados: nome, identificação fiscal, endereço, contactos, tipo (residencial, empresa).
+
+RF07 – Cadastro de obras/projetos
+
+Associação cliente–obra.
+
+Endereço da obra (usado para geolocalização).
+
+Datas estimadas de início/fim.
+
+Horário padrão de trabalho (ex.: 08h–17h).
+
+RF08 – Configuração de contrato
+
+Tipo de cobrança:
+
+Hora trabalhada
+
+Diária
+
+Preço fixo (mas horas controladas internamente).
+
+Valor-hora por função (pedreiro, eletricista, encarregado etc.).
+
+Regras de arredondamento de horas (ex.: mínimo 1h, blocos de 15 min).
+
+4.3. Registro de Ponto na Obra (Check-in/Check-out)
+
+RF09 – Check-in na obra (ponto de entrada)
+
+Funcionário registra:
+
+Data/hora (servidor)
+
+Obra
+
+Localização (GPS)
+
+Eventualmente foto (selfie com ambiente)
+
+RF10 – Check-out na obra (ponto de saída)
+
+Funcionário registra:
+
+Data/hora
+
+Localização (GPS)
+
+Foto opcional (selfie/ambiente)
+
+RF11 – Geofencing (validação da localização)
+
+Verificar se o ponto foi registrado dentro de raio configurável do endereço da obra (ex.: 100 m).
+
+Registros fora do perímetro marcados como “suspeitos” ou exigem justificativa/validação.
+
+RF12 – Modo offline
+
+Quando sem internet:
+
+Registros são armazenados localmente com timestamp.
+
+Ao reconectar, app sincroniza com servidor.
+
+Sistema marca registro como “offline” para auditoria.
+
+RF13 – Registro de pausas
+
+Funcionário pode registrar início e fim de pausa (ex.: almoço).
+
+Regras de desconto de pausa configuráveis por empresa ou obra.
+
+RF14 – Justificativas de exceções
+
+Funcionário pode anexar justificativa (texto e/ou foto) em:
+
+Atrasos
+
+Saídas antecipadas
+
+Check-in fora da área
+
+RF15 – Revisão/Ajuste pelo gestor
+
+Gestor pode:
+
+Aprovar automaticamente (em casos normais)
+
+Ajustar horários
+
+Aprovar/recusar justificativas
+
+Histórico de alterações mantido (quem, quando, o quê).
+
+4.4. Controles Antifraude de Ponto
+
+Objetivo: impedir que um funcionário faça check-in/out em nome de outro.
+
+RF16 – Autenticação individual obrigatória
+
+Todo check-in/out exige que o usuário esteja autenticado na sua própria conta.
+
+Sessão expira após tempo configurável:
+
+Após expiração, novo login é obrigatório.
+
+RF17 – Confirmação por PIN/Biometria para ponto
+
+Além da sessão autenticada, o sistema pode exigir (configurável):
+
+Um PIN pessoal do funcionário (4–6 dígitos) antes de registrar ponto, ou
+
+Autenticação biométrica do dispositivo (faceID/TouchID) vinculada à conta daquele funcionário.
+
+Objetivo: mesmo num telemóvel compartilhado, cada funcionário precisa se autenticar pessoalmente.
+
+RF18 – Selfie obrigatória no check-in/out (configurável)
+
+Empresa pode configurar:
+
+Exigir selfie no check-in
+
+Exigir selfie no check-out
+
+Foto é vinculada ao registro de ponto.
+
+Usada para auditoria e eventual validação manual (ou automática em fase futura, com reconhecimento facial).
+
+RF19 – Vinculação de dispositivo ao usuário (opcional e configurável)
+
+Empresa pode optar por:
+
+Permitir vários dispositivos por usuário, ou
+
+Vincular um dispositivo principal por funcionário (device binding).
+
+Se habilitado:
+
+Primeiro login desse usuário num dispositivo registra aquele device como confiável.
+
+Alertas quando usuário fizer login em dispositivo novo, múltiplos dispositivos, etc.
+
+RF20 – Proibição de “check-in em grupo” entre funcionários
+
+Funcionário não pode registrar ponto para outro funcionário.
+
+Fluxos permitidos:
+
+Cada funcionário registra seu próprio ponto.
+
+Alternativamente, apenas um gestor pode registrar um ponto “administrativo” em nome de um funcionário ausente, com motivo obrigatório (ex.: esquecimento do celular / correção de erro).
+
+Sistema registra sempre quem registrou o ponto:
+
+Funcionário (autoregistro) ou gestor (lançamento administrativo).
+
+RF21 – Regra de proximidade temporal para múltiplos pontos no mesmo dispositivo
+
+Regra antifraude:
+
+Se o mesmo dispositivo registrar check-in de múltiplos funcionários em intervalo muito curto (ex.: 10–20 segundos), o sistema:
+
+Marca como suspeito
+
+Notifica gestor/admin para auditoria.
+
+Ideal para detectar tentativa de “fila rápida de selfies” num único telemóvel.
+
+RF22 – Alertas de comportamento suspeito
+
+Gatilhos possíveis:
+
+Muitos funcionários marcando ponto do mesmo dispositivo.
+
+Horário de trabalho muito diferente dos padrões habituais daquele funcionário.
+
+Check-in sempre no limite exato do geofencing.
+
+Eventos são exibidos em um painel de “registros suspeitos” para o gestor.
+
+RF23 – Log detalhado de ponto
+
+Para cada registro:
+
+Usuário autenticado
+
+Dispositivo (ID)
+
+Data/hora servidor
+
+Localização GPS
+
+Foto (se exigida)
+
+Origem (online/offline)
+
+Tudo disponível para auditoria, inclusive para defender a empresa em conflitos com clientes.
+
+4.5. Portal para o Cliente
+
+RF24 – Acesso do cliente
+
+Cliente tem login próprio.
+
+Visualiza apenas obras e dados relacionados à sua empresa/contrato.
+
+RF25 – Consulta de horas por obra/período
+
+Visualizar:
+
+Lista de dias
+
+Funcionários presentes
+
+Horário mostrado (chegada/saída)
+
+Total de horas/dia
+
+RF26 – Confirmação de horas
+
+Cliente pode confirmar as horas de um período (ex.: semanal ou mensal).
+
+RF27 – Contestação de horas
+
+Cliente pode selecionar registros e contestar:
+
+“Funcionário chegou mais tarde”
+
+“Funcionário foi embora mais cedo” etc.
+
+Contestação gera tarefa para o gestor.
+
+RF28 – Tratamento de contestações
+
+Gestor vê:
+
+Registro de ponto
+
+Localização em mapa
+
+Foto(s) do ponto
+
+Histórico antifraude
+
+Pode:
+
+Manter registro
+
+Ajustar horas
+
+Decisão fica registrada em histórico, com data/hora e responsável.
+
+4.6. Controle de Ferramentas
+
+RF29 – Cadastro de ferramentas
+
+Nome, categoria, nº de série, valor estimado, foto, estado (disponível, em uso, manutenção, perdido).
+
+RF30 – Identificação com QR Code (fase 1)
+
+Sistema gera QR Code único por ferramenta.
+
+App lê QR Code para emprestar/devolver.
+
+RF31 – Empréstimo (check-out) de ferramenta
+
+Funcionário registra:
+
+Ferramenta
+
+Obra
+
+Data/hora
+
+Fica registrado como responsável.
+
+RF32 – Devolução (check-in) de ferramenta
+
+Registro de devolução:
+
+Data/hora
+
+Estado (ok, danificada, etc.)
+
+Foto em caso de dano (opcional ou obrigatório, conforme configuração).
+
+RF33 – Alertas de ferramentas não devolvidas
+
+No final do dia/turno:
+
+Lista de ferramentas “em posse” dos funcionários.
+
+Possibilidade de enviar notificação ao funcionário e ao gestor.
+
+RF34 – Registro de perdas/roubos/danos
+
+Tipo de evento, descrição, foto.
+
+Ligado ao funcionário e à obra.
+
+RF35 – Histórico por ferramenta
+
+Tela com histórico de:
+
+Todos os empréstimos
+
+Devoluções
+
+Danos/perdas/roubos.
+
+4.7. Gestão de Férias e Ausências
+
+RF36 – Tipos de ausência configuráveis
+
+Férias, doença, falta justificada, falta injustificada, licenças, ausência não remunerada, etc.
+
+Para cada tipo:
+
+Se é remunerado
+
+Se conta para saldo de férias
+
+Como entra na folha.
+
+RF37 – Solicitação de férias/ausência pelo funcionário
+
+Funcionário solicita:
+
+Tipo
+
+Data início/fim
+
+Dia inteiro ou parcial
+
+Observações
+
+RF38 – Fluxo de aprovação
+
+Estado: pendente, aprovado, rejeitado, cancelado.
+
+Gestor aprova/rejeita com comentários.
+
+Funcionário notificado.
+
+RF39 – Efeito sobre o ponto
+
+Dias aprovados como férias/ausência:
+
+Sistema considera jornada padrão para férias remuneradas.
+
+Bloqueia ou marca como suspeito qualquer registro de ponto nesse período, para revisão.
+
+RF40 – Saldo de férias
+
+Manter saldo por funcionário:
+
+Créditos anuais
+
+Consumo
+
+Saldo remanescente
+
+Regra de renovação anual parametrizável.
+
+RF41 – Integração férias/ausências com folha
+
+Exportar total de:
+
+Dias/horas de férias
+
+Outros tipos de ausência remunerada
+
+Ausências não remuneradas.
+
+4.8. Folha de Pagamento (RH)
+
+RF42 – Cálculo de horas por funcionário
+
+Para cada período:
+
+Horas normais
+
+Horas extras
+
+Horas noturnas
+
+Horas de férias
+
+Ausências remuneradas
+
+Ausências não remuneradas
+
+RF43 – Regras de jornada configuráveis
+
+Jornada diária/semana
+
+Regra de hora extra
+
+Adicional noturno
+
+Tolerância de atraso.
+
+RF44 – Relatórios para folha
+
+Gerar relatório por funcionário/período para:
+
+Departamento de RH
+
+Escritório de contabilidade
+
+Exportação em Excel/PDF/API.
+
+4.9. Faturação para o Cliente
+
+RF45 – Cálculo de horas faturáveis por obra
+
+Considera apenas:
+
+Horas de trabalho efetivo na obra (ponto validado).
+
+Exclui:
+
+Férias
+
+Ausências não trabalhadas.
+
+RF46 – Aplicação de tarifas
+
+Multiplica horas por valor-hora conforme função/função especial.
+
+RF47 – Geração de pré-fatura/fatura
+
+Relatórios com:
+
+Total de horas por função
+
+Valor por função
+
+Total geral
+
+Possibilidade de anexar:
+
+Relatório de ponto
+
+Histórico de contestações e confirmações do cliente.
+
+4.10. Notificações e Alertas
+
+RF48 – Notificações operacionais
+
+Falta de check-in até certo horário.
+
+Falta de check-out.
+
+Ferramentas não devolvidas.
+
+Novos pedidos de férias.
+
+RF49 – Notificações antifraude
+
+Muitos usuários marcando ponto do mesmo dispositivo em sequência.
+
+Registros repetitivos suspeitos.
+
+Mudanças de dispositivo frequentes.
+
+RF50 – Notificações para cliente
+
+Períodos prontos para validação (pré-fatura).
+
+Resolução de contestações.
+
+4.11. Relatórios e Auditoria
+
+RF51 – Relatórios gerenciais
+
+Horas por funcionário, obra, cliente, período.
+
+Ausências por tipo.
+
+Uso de ferramentas.
+
+RF52 – Trilhas de auditoria (Log de negócios)
+
+Log de:
+
+Criação/alteração de ponto
+
+Aprovação/alteração de férias
+
+Contestações e ajustes
+
+Empréstimo/devolução de ferramentas
+
+Incluindo usuário, data/hora e dados antes/depois.
+
+RF53 – Exportação de dados
+
+CSV/Excel/PDF para relatórios e BI.
+
+5. Requisitos Não Funcionais
+5.1. Arquitetura e Integração
+
+RNF01 – Arquitetura
+
+Backend REST (ex.: Java/Spring Boot / Node).
+
+Frontend web (admin, gestor, cliente).
+
+App mobile (Android/iOS – nativo ou híbrido).
+
+RNF02 – APIs externas
+
+APIs para:
+
+Integração com folha de pagamento
+
+Contabilidade
+
+Ferramentas de BI.
+
+5.2. Segurança e Autenticação
+
+RNF03 – HTTPS obrigatório
+
+Todo tráfego protegido por TLS.
+
+RNF04 – Senhas seguras + OAuth2/OpenID
+
+Armazenamento de senhas com hash forte.
+
+Implementação de OAuth2/OIDC para Google/Facebook.
+
+RNF05 – Segurança antifraude
+
+Controles combinados:
+
+Sessão autenticada + PIN/biometria
+
+Geofencing
+
+Selfies de ponto
+
+Monitorização de padrões suspeitos
+
+Device binding (opcional)
+
+5.3. Desempenho e Escalabilidade
+
+RNF06 – Desempenho mínimo
+
+Operações críticas (login, check-in, consulta diária) com latência aceitável (ex.: < 1s).
+
+RNF07 – Escalabilidade
+
+Suportar múltiplas empresas e obras (multi-tenant em roadmap).
+
+5.4. Usabilidade e UX
+
+RNF08 – Mobile-first
+
+Fluxos de check-in/out com:
+
+Telas simples
+
+Botões grandes
+
+Poucos passos.
+
+RNF09 – Multilingue
+
+Suporte inicial a PT / EN / FR / NL.
+
+5.5. Privacidade e Conformidade
+
+RNF10 – Proteção de dados pessoais (GDPR, etc.)
+
+Tratamento de:
+
+Dados pessoais
+
+Localização
+
+Fotos
+
+Política clara de uso e retenção.
+
+RNF11 – Transparência para funcionários
+
+Mensagem clara na app explicando:
+
+Dados coletados
+
+Fins (gestão de obra, folha, segurança).
+
+RNF12 – Retenção e anonimização
+
+Configuração de prazos para:
+
+Dados de localização
+
+Fotos
+
+Possibilidade de anonimizar registros antigos.
+
+5.6. Logs, Monitoramento e Backup
+
+RNF13 – Logs técnicos
+
+Logs de erro, desempenho, autenticação.
+
+RNF14 – Monitoramento
+
+Métricas (ex.: número de check-ins, taxa de erro).
+
+RNF15 – Backup e recuperação
+
+Rotina periódica de backup e plano de restauração.
