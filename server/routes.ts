@@ -43,26 +43,19 @@ export async function registerRoutes(
   // Local Auth - Register (creates tenant and sets user as admin)
   app.post("/api/auth/register", async (req: any, res) => {
     try {
-      const { username, password, email, firstName, lastName, companyName, subscriptionPlan } = req.body;
+      const { email, password, firstName, lastName, companyName, subscriptionPlan } = req.body;
       
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
       }
       
       if (!companyName) {
         return res.status(400).json({ message: "Company name is required" });
       }
       
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        return res.status(400).json({ message: "Username already exists" });
-      }
-      
-      if (email) {
-        const existingEmail = await storage.getUserByEmail(email);
-        if (existingEmail) {
-          return res.status(400).json({ message: "Email already exists" });
-        }
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
       }
       
       // Check if company name already exists
@@ -82,9 +75,8 @@ export async function registerRoutes(
       // Create the user as admin of the new tenant
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await storage.createUser({
-        username,
-        password: hashedPassword,
         email,
+        password: hashedPassword,
         firstName,
         lastName,
         role: "admin",
@@ -108,20 +100,20 @@ export async function registerRoutes(
   // Local Auth - Login
   app.post("/api/auth/local-login", async (req: any, res) => {
     try {
-      const { username, password } = req.body;
+      const { email, password } = req.body;
       
-      if (!username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
       }
       
-      const user = await storage.getUserByUsername(username);
+      const user = await storage.getUserByEmail(email);
       if (!user || !user.password) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
       
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
-        return res.status(401).json({ message: "Invalid username or password" });
+        return res.status(401).json({ message: "Invalid email or password" });
       }
       
       if (!user.isActive) {
@@ -174,31 +166,30 @@ export async function registerRoutes(
       }
 
       const testUsers = [
-        { username: "superadmin", password: "superadmin123", role: "superadmin", firstName: "Super", lastName: "Admin", email: "superadmin@constructtrack.com" },
-        { username: "admin", password: "admin123", role: "admin", firstName: "Admin", lastName: "User", email: "admin@constructtrack.com" },
-        { username: "manager", password: "manager123", role: "manager", firstName: "Manager", lastName: "User", email: "manager@constructtrack.com" },
-        { username: "employee", password: "employee123", role: "employee", firstName: "Employee", lastName: "User", email: "employee@constructtrack.com" },
-        { username: "client", password: "client123", role: "client", firstName: "Client", lastName: "User", email: "client@constructtrack.com" },
+        { password: "superadmin123", role: "superadmin", firstName: "Super", lastName: "Admin", email: "superadmin@constructtrack.com" },
+        { password: "admin123", role: "admin", firstName: "Admin", lastName: "User", email: "admin@constructtrack.com" },
+        { password: "manager123", role: "manager", firstName: "Manager", lastName: "User", email: "manager@constructtrack.com" },
+        { password: "employee123", role: "employee", firstName: "Employee", lastName: "User", email: "employee@constructtrack.com" },
+        { password: "client123", role: "client", firstName: "Client", lastName: "User", email: "client@constructtrack.com" },
       ];
 
       const createdUsers = [];
       for (const userData of testUsers) {
-        let user = await storage.getUserByUsername(userData.username);
+        let user = await storage.getUserByEmail(userData.email);
         if (!user) {
           const hashedPassword = await bcrypt.hash(userData.password, 10);
           user = await storage.createUser({
-            username: userData.username,
+            email: userData.email,
             password: hashedPassword,
             role: userData.role,
             firstName: userData.firstName,
             lastName: userData.lastName,
-            email: userData.email,
             tenantId: userData.role !== "superadmin" ? tenant.id : undefined,
             isActive: true,
           });
-          createdUsers.push({ username: userData.username, role: userData.role, created: true });
+          createdUsers.push({ email: userData.email, role: userData.role, created: true });
         } else {
-          createdUsers.push({ username: userData.username, role: userData.role, created: false, message: "already exists" });
+          createdUsers.push({ email: userData.email, role: userData.role, created: false, message: "already exists" });
         }
       }
 
@@ -733,7 +724,6 @@ export async function registerRoutes(
 
       const newUser = await storage.createUser({
         email,
-        username: email,
         password: hashedPassword,
         firstName,
         lastName,
@@ -2036,7 +2026,6 @@ export async function registerRoutes(
       if (adminEmail && adminPassword) {
         const hashedPassword = await bcrypt.hash(adminPassword, 10);
         await storage.createUser({
-          username: adminEmail,
           email: adminEmail,
           password: hashedPassword,
           firstName: adminFirstName || "Admin",
@@ -2193,7 +2182,6 @@ export async function registerRoutes(
       
       const hashedPassword = await bcrypt.hash(password, 10);
       const user = await storage.createUser({
-        username: email,
         email,
         password: hashedPassword,
         firstName: firstName || "",

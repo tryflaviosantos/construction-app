@@ -19,12 +19,11 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { HardHat, LogIn, UserPlus, ArrowLeft } from "lucide-react";
 
 const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
 const registerSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
@@ -49,7 +48,7 @@ export default function Login() {
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -57,7 +56,6 @@ export default function Login() {
   const registerForm = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -84,7 +82,7 @@ export default function Login() {
     onError: (error: Error) => {
       toast({
         title: t("auth.loginError", "Login failed"),
-        description: error.message || t("auth.invalidCredentials", "Invalid username or password"),
+        description: error.message || t("auth.invalidCredentials", "Invalid email or password"),
         variant: "destructive",
       });
     },
@@ -166,14 +164,15 @@ export default function Login() {
                   <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                     <FormField
                       control={loginForm.control}
-                      name="username"
+                      name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t("auth.username", "Username")}</FormLabel>
+                          <FormLabel>{t("auth.email", "Email")}</FormLabel>
                           <FormControl>
                             <Input
-                              placeholder={t("auth.enterUsername", "Enter your username")}
-                              data-testid="input-login-username"
+                              type="email"
+                              placeholder={t("auth.enterEmail", "Enter your email")}
+                              data-testid="input-login-email"
                               {...field}
                             />
                           </FormControl>
@@ -285,23 +284,6 @@ export default function Login() {
                               <SelectItem value="enterprise">{t("plans.enterprise", "Enterprise")} - {t("plans.enterpriseDesc", "Full access")}</SelectItem>
                             </SelectContent>
                           </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="username"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t("auth.username", "Username")}</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={t("auth.chooseUsername", "Choose a username")}
-                              data-testid="input-register-username"
-                              {...field}
-                            />
-                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

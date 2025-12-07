@@ -49,9 +49,8 @@ export const tenants = pgTable("tenants", {
 // Users (all user types)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  tenantId: varchar("tenant_id").references(() => tenants.id),
-  email: varchar("email", { length: 255 }).unique(),
-  username: varchar("username", { length: 100 }).unique(),
+  tenantId: varchar("tenant_id").references(() => tenants.id), // null for superadmin
+  email: varchar("email", { length: 255 }).unique().notNull(),
   password: varchar("password", { length: 255 }),
   firstName: varchar("first_name", { length: 100 }),
   lastName: varchar("last_name", { length: 100 }),
